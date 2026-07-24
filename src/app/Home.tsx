@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 interface Todo {
   id: string;
@@ -10,82 +11,111 @@ interface Todo {
 }
 
 export default function Home() {
-  const [todos, setTodos] = useState<Todo[]>([
-    {
-      id: "1",
-      title: "Buy groceries",
-      description: "Milk, Bread, Eggs",
-      completed: false,
-    },
-    {
-      id: "2",
-      title: "Read a book",
-      description: "Read 20 pages of Next.js documentation",
-      completed: true,
-    },
-  ]);
+  const [todos, setTodos] = useState<Todo[]>([]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
-
   useEffect(() => {
-    // Attempt to fetch todos from backend if API is active
-    fetch("/todos")
-      .then((res) => {
-        if (res.ok) return res.json();
-        return null;
-      })
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setTodos(
-            data.map((item: any) => ({
-              id: item.id || String(Math.random()),
-              title: item.title || "",
-              description: item.description || "",
-              completed: Boolean(item.completed || item.is_completed),
-            }))
-          );
-        }
-      })
-      .catch(() => {
-        // Fallback to local state if backend is unauthorized or unconfigured
-      });
+    supabase.auth.getSession().then(({ data }) => {
+      console.log(data.session);
+    });
+  }, []);
+  useEffect(() => {
+    loadTodos();
   }, []);
 
-  const handleAddTodo = (e: React.FormEvent) => {
+  const loadTodos = async () => {
+    try {
+      const res = await fetch("/todos");
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      setTodos(
+        data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description ?? "",
+          completed: item.completed,
+        }))
+      );
+    } catch { }
+  };
+
+  const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!title.trim()) return;
 
-    const newTodo: Todo = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      description: description.trim(),
-      completed: false,
-    };
-
-    setTodos((prev) => [newTodo, ...prev]);
-
-    // Send POST request to backend API without breaking if unauthorized
-    fetch("/todos", {
+    const res = await fetch("/todos", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), description: description.trim() }),
-    }).catch(() => { });
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: title.trim(),
+        description: description.trim(),
+      }),
+    });
+
+    if (!res.ok) return;
+
+    const todo = await res.json();
+
+    setTodos((prev) => [
+      {
+        id: todo.id,
+        title: todo.title,
+        description: todo.description,
+        completed: todo.completed,
+      },
+      ...prev,
+    ]);
 
     setTitle("");
     setDescription("");
   };
 
-  const toggleTodo = (id: string) => {
+  const toggleTodo = async (id: string) => {
+    const todo = todos.find((t) => t.id === id);
+
+    if (!todo) return;
+
+    const res = await fetch(`/todos/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        completed: !todo.completed,
+      }),
+    });
+
+    if (!res.ok) return;
+
+    const updated = await res.json();
+
     setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      prev.map((t) =>
+        t.id === id
+          ? {
+            ...t,
+            completed: updated.completed,
+          }
+          : t
       )
     );
   };
 
-  const deleteTodo = (id: string) => {
+  const deleteTodo = async (id: string) => {
+    const res = await fetch(`/todos/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) return;
+
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
   };
 
@@ -153,8 +183,8 @@ export default function Home() {
                 key={type}
                 onClick={() => setFilter(type)}
                 className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${filter === type
-                    ? "bg-gray-200 dark:bg-zinc-800 font-semibold"
-                    : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-200"
+                  ? "bg-gray-200 dark:bg-zinc-800 font-semibold"
+                  : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-200"
                   }`}
               >
                 {type}
@@ -185,8 +215,8 @@ export default function Home() {
                   <div className="min-w-0 flex-1">
                     <p
                       className={`text-sm font-medium break-words ${todo.completed
-                          ? "line-through text-gray-400 dark:text-zinc-500"
-                          : ""
+                        ? "line-through text-gray-400 dark:text-zinc-500"
+                        : ""
                         }`}
                     >
                       {todo.title}
@@ -194,8 +224,8 @@ export default function Home() {
                     {todo.description && (
                       <p
                         className={`text-xs mt-0.5 break-words ${todo.completed
-                            ? "line-through text-gray-400 dark:text-zinc-500"
-                            : "text-gray-500 dark:text-zinc-400"
+                          ? "line-through text-gray-400 dark:text-zinc-500"
+                          : "text-gray-500 dark:text-zinc-400"
                           }`}
                       >
                         {todo.description}

@@ -11,7 +11,7 @@ export async function DELETE(req: Request, context: Props){
 
     if (!user) return Response.json({error: "Unauthorized"}, {status: 401});
 
-    const {data, error} = await supabase.from("todos").delete().eq("id", id).select().single();
+    const {data, error} = await supabase.from("todos").delete().eq("id", id).eq("user_id", user.id).select().single();
     return Response.json(data);
 }
 
@@ -32,7 +32,7 @@ export async function PUT(req: Request, context: Props) {
     ...(completed !== undefined && { completed }),
   };
 
-  const { data, error } = await supabase.from("todos").update(updates).eq("id", id).select().single();
+  const { data, error } = await supabase.from("todos").update(updates).eq("id", id).eq("user_id", user.id).select().single();
 
   if (error) return Response.json({ error: error.message }, { status: 400 });
   return Response.json(data);
