@@ -30,14 +30,3 @@ export async function POST(req: Request) {
     return Response.json(data);
 }
 
-export async function DELETE(req: Request){
-    const supabase = await createClient();
-    const {data: {user}} = await supabase.auth.getUser();
-
-    if (!user) return Response.json({error: "Unauthorized"}, {status: 401});
-
-}
-
-export async function PUT(req: Request){
-
-}
