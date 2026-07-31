@@ -142,4 +142,4 @@ Follow these steps to set up and run the application locally:
 
 ## 📡 API Documentation Link
 
-For details regarding all request and response structures, validation error formats, and status codes, please refer to: [API.md](file:///home/tefmaalrex/peerstack/todolist/API.md).
+For details regarding all request and response structures, validation error formats, and status codes, please refer to: API.md
